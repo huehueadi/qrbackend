@@ -35,7 +35,7 @@ export const generateQrCode = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error generating QR code' });
+    res.status(500).json({ message: 'Error generating QR code' ,error:err});
   }
 };
 
@@ -67,13 +67,13 @@ export const updateQrCodeUrl = async (req, res) => {
   const { qrCodeId } = req.params;
   const { newUrl } = req.body;
 
-  // Ensure new URL is provided
+ 
   if (!newUrl) {
     return res.status(400).json({ message: 'New URL is required' });
   }
 
   try {
-    // Find the QR code document by ID
+   
     const qrCode = await Qr.findOne({ qrCodeId });
 
     if (!qrCode) {
