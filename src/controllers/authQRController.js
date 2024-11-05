@@ -22,7 +22,7 @@ export const generateQrCode = async (req, res) => {
     await newQrCode.save();
 
     // Generate QR Code image URL pointing to the redirect URL
-    QRCode.toDataURL(`http://localhost:7000/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
+    QRCode.toDataURL(`https://qrbackend-aio3.onrender.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
       if (err) {
         return res.status(500).json({ message: 'Error generating QR code' });
       }

@@ -20,7 +20,7 @@ const io = new Server(server, {
 const PORT = 7000;
 
 app.use(cors({
-    origin: 'http://localhost:3000', 
+    origin: 'https://qrfrontend.onrender.com', 
     methods: ['GET', 'POST', 'PUT'], 
 }));
 
