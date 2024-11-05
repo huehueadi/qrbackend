@@ -11,8 +11,8 @@ const server = http.createServer(app);
 // Configure CORS for Socket.IO
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:3000', // Allow requests from this origin
-        methods: ['GET', 'POST'], // Allowed methods
+        origin: 'https://qrfrontend.onrender.com/', // Allow requests from this origin
+        methods: ['GET', 'POST', 'PUT'], // Allowed methods
         credentials: true // Allow credentials
     }
 });
