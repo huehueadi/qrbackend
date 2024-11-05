@@ -11,23 +11,27 @@ const server = http.createServer(app);
 // Configure CORS for Socket.IO
 const io = new Server(server, {
     cors: {
-        origin: 'https://qrfrontend.onrender.com/', // Allow requests from this origin
-        methods: ['GET', 'POST', 'PUT'], // Allowed methods
-        credentials: true // Allow credentials
+        origin: 'https://qrfrontend.onrender.com', // No trailing slash
+        methods: ['GET', 'POST', 'PUT'],
+        credentials: true, // Allow credentials
     }
 });
 
-const PORT = 7000;
+// Use dynamic port assignment for Render
+const PORT = process.env.PORT || 7000; // Use Render's dynamic port or 7000 locally
 
+// Enable CORS for Express
 app.use(cors({
-    origin: 'https://qrfrontend.onrender.com', 
-    methods: ['GET', 'POST', 'PUT'], 
+    origin: 'https://qrfrontend.onrender.com', // No trailing slash
+    methods: ['GET', 'POST', 'PUT'],
 }));
 
 app.use(express.json());
 
+// Define routes
 app.use('/api', router);
 
+// Socket.IO connection
 io.on('connection', (socket) => {
     console.log("New connection established");
 
@@ -35,7 +39,7 @@ io.on('connection', (socket) => {
         console.log("Client disconnected");
     });
 });
-export { io };
+
 // Connect to the database
 connectionDatabase();
 
