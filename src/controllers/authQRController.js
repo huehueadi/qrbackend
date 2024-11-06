@@ -66,39 +66,28 @@ export const generateQrCode = async (req, res) => {
 
 export const redirectQrCode = async (req, res) => {
   const { qrCodeId } = req.params; 
-  const userAgent = req.get('User-Agent');  // Get the User-Agent from headers
-  const ip = req.ip;  // Get the IP address of the request
-
-  const geo = geoip.lookup(ip);  // Look up the IP for geo location
-
+  const userAgent = req.get('User-Agent');  
+  const ip = req.ip;  
+  const geo = geoip.lookup(ip);  
   try {
-    // Find the QR code data in the database
+   
     const qrCodeData = await Qr.findOne({ qrCodeId });
 
     if (!qrCodeData) {
       return res.status(404).json({ message: 'QR code not found' });
     }
 
-    // Check if there is an existing scan record for the same IP and QR Code ID
-    const existingScan = await Analytics.findOne({
+    const analyticsData = new Analytics({
       qrCodeId,
-      ip_address: ip,
+      scan_time: new Date(),  
+      device_type: userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',  
+      ip_address: ip,  
+      location: geo ? { country: geo.country, city: geo.city } : { country: 'Unknown', city: 'Unknown' }, 
+      redirection_link: qrCodeData._id,  
     });
 
-    // If no scan record exists for this IP and QR Code, create a new analytics entry
-    if (!existingScan) {
-      const analyticsData = new Analytics({
-        qrCodeId,
-        scan_time: new Date(), 
-        device_type: userAgent.includes('Mobile') ? 'Mobile' : 'Desktop',  // Device type based on User-Agent
-        ip_address: ip,
-        location: geo ? { country: geo.country, city: geo.city } : { country: 'Unknown', city: 'Unknown' },  // Location from IP
-        redirection_link: qrCodeData._id,  // Link to the QR code document
-      });
-
-      await analyticsData.save();  // Save analytics data to the database
-      console.log('Analytics saved:', analyticsData);  // Log the saved analytics data for debugging
-    }
+    await analyticsData.save(); 
+    console.log('Analytics saved:', analyticsData);  
 
     // Redirect the user to the URL associated with the QR code
     res.redirect(qrCodeData.url);
