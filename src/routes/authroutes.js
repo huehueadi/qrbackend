@@ -9,4 +9,6 @@ router.get('/redirect/:qrCodeId', redirectQrCode);
 
 router.put('/update/:qrCodeId', updateQrCodeUrl);
 
+// router.get('/redirect/:qrCodeId', trackScan);
+
 export default router
