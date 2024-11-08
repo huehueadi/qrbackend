@@ -5,6 +5,10 @@ const slotSchema = new mongoose.Schema({
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
   defaultLink: { type: String, required: true },  // The fallback URL after the slot expires
+  durationInMinutes: {
+    type: Number,
+    required: true,
+  },
 });
 
 const Slot = mongoose.model('Slot', slotSchema);
