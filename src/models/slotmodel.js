@@ -1,13 +1,12 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const slotSchema = new mongoose.Schema({
-    qrCodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Qr' },
-    brandName: String,
-    startTime: Date,
-    endTime: Date,
-    redirectUrl: String,
+  qrCodeId: { type: String, required: true, unique: true },  // Reference to the QR code
+  startTime: { type: Date, required: true },
+  endTime: { type: Date, required: true },
+  defaultLink: { type: String, required: true },  // The fallback URL after the slot expires
 });
 
-const Slot = mongoose.model("Slot", slotSchema)
+const Slot = mongoose.model('Slot', slotSchema);
 
-export default Slot
+export default Slot;

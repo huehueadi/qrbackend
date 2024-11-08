@@ -1,15 +1,12 @@
+import geoip from "geoip-lite";
 import Qr from "../models/qrModel.js";
 import Analytics from "../models/scanAnalytics.js";
-
-import geoip from "geoip-lite";
-
 
 export const trackScan = async (req, res) => {
   const { qrCodeId } = req.params; 
   const userAgent = req.get('User-Agent');  
   const ip = req.ip; 
 
-  
   const geo = geoip.lookup(ip);
 
   try {
@@ -19,8 +16,6 @@ export const trackScan = async (req, res) => {
     if (!qrCodeData) {
       return res.status(404).json({ message: 'QR code not found' });
     }
-
-   
     const existingScan = await Analytics.findOne({
       qrCodeId,
       ip_address: ip,
