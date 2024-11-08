@@ -1,3 +1,4 @@
+import Qr from "../models/qrModel.js";
 import Slot from "../models/slotmodel.js";
 
 export const createSlot = async (req, res) => {
@@ -38,7 +39,7 @@ export const createSlot = async (req, res) => {
   
     } catch (err) {
       console.error(err);
-      res.status(500).json({ message: 'Error creating slot' });
+      res.status(500).json({ message: 'Error creating slot',  error: err.message, });
     }
   };
 export const updateSlot = async(req, res)=>{
