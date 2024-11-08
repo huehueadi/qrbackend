@@ -1,32 +1,46 @@
 import Slot from "../models/slotmodel.js";
 
 export const createSlot = async (req, res) => {
-    const { qrCodeId, startTime, endTime, defaultLink } = req.body; 
-
-    try {
-       
-        if (!qrCodeId || !startTime || !endTime || !defaultLink) {
-            return res.status(400).json({
-                 message: "Slot Data fields are required",
-                 success:false 
-                });
-        }
-
-        const newSlot = new Slot({
-            qrCodeId,
-            startTime,
-            endTime,
-            defaultLink,
-        });
-
-        await newSlot.save();
-
-        res.status(201).json({ message: "Slot created successfully", slot: newSlot });
-    } catch (error) {
-        console.error("Error creating slot:", error);
-        res.status(500).json({ message: "Error creating slot", error });
+    const { qrCodeId, startTime, endTime, defaultLink, durationInMinutes } = req.body;
+  
+    if (!qrCodeId || !startTime || !endTime || !defaultLink || !durationInMinutes) {
+      return res.status(400).json({ message: 'qrCodeId, startTime, endTime, defaultLink, and durationInMinutes are required' });
     }
-};
+  
+    try {
+      // Validate that the QR Code exists
+      const existingQrCode = await Qr.findOne({ qrCodeId });
+      if (!existingQrCode) {
+        return res.status(400).json({ message: 'QR Code not found' });
+      }
+  
+      // Calculate duration in minutes
+      const durationInMs = (new Date(endTime) - new Date(startTime)); // Duration in milliseconds
+      if (durationInMs <= 0) {
+        return res.status(400).json({ message: 'End time must be after start time.' });
+      }
+  
+      // Create a new slot
+      const newSlot = new Slot({
+        qrCodeId,
+        startTime,
+        endTime,
+        defaultLink,
+        durationInMinutes,
+      });
+  
+      await newSlot.save();
+  
+      res.status(201).json({
+        message: 'Slot created successfully!',
+        slot: newSlot,
+      });
+  
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error creating slot' });
+    }
+  };
 export const updateSlot = async(req, res)=>{
     try {
         const {slotId} = req.params

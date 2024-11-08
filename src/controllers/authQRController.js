@@ -154,14 +154,13 @@ import Analytics from '../models/scanAnalytics.js';
 import Slot from '../models/slotmodel.js';
 
 export const generateQrCode = async (req, res) => {
-  const { qrCodeId, url, durationInMinutes } = req.body;  
-  
-  if (!qrCodeId || !url || !durationInMinutes) {
-    return res.status(400).json({ message: 'qrCodeId, url, and durationInMinutes are required' });
+  const { qrCodeId, url } = req.body;
+
+  if (!qrCodeId || !url) {
+    return res.status(400).json({ message: 'qrCodeId and url are required' });
   }
-  
+
   try {
-   
     const existingQrCode = await Qr.findOne({ qrCodeId });
     if (existingQrCode) {
       return res.status(400).json({ message: 'QR Code ID already exists' });
@@ -170,18 +169,8 @@ export const generateQrCode = async (req, res) => {
     const newQrCode = new Qr({ qrCodeId, url });
     await newQrCode.save();
 
-    const startTime = new Date();  
-    const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);  
-   
-    const slot = new Slot({
-      qrCodeId: qrCodeId,
-      startTime: startTime,
-      endTime: endTime,
-      defaultLink: url, 
-    });
-    await slot.save();
-
-    QRCode.toDataURL(`https://yourdomain.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
+    // Generate the QR code as an image URL
+    QRCode.toDataURL(`https://qrbackend-aio3.onrender.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
       if (err) {
         return res.status(500).json({ message: 'Error generating QR code' });
       }
@@ -189,9 +178,7 @@ export const generateQrCode = async (req, res) => {
         message: 'QR code generated successfully!',
         qrCodeUrl,
         qrCodeId,
-
       });
-
     });
 
   } catch (err) {
@@ -211,12 +198,9 @@ export const redirectQrCode = async (req, res) => {
   try {
       
       const qrCodeData = await Qr.findOne({ qrCodeId });
-
       if (!qrCodeData) {
           return res.status(404).json({ message: "QR code not found" });
       }
-
-      
       const slotData = await Slot.findOne({ qrCodeId });
 
       let redirectUrl = qrCodeData.url;
@@ -226,7 +210,6 @@ export const redirectQrCode = async (req, res) => {
           const slotStartTime = new Date(slotData.startTime);
           const slotEndTime = new Date(slotData.endTime);
 
-         
           if (currentTime >= slotStartTime && currentTime <= slotEndTime) {
               redirectUrl = qrCodeData.url;  
           } else {
