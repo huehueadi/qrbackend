@@ -193,50 +193,56 @@ export const redirectQrCode = async (req, res) => {
   const userAgent = req.get("User-Agent"); 
   const ip = req.ip; 
 
-  const geo = geoip.lookup(ip); 
+  const geo = geoip.lookup(ip); // Lookup geolocation based on IP
 
   try {
-      
-      const qrCodeData = await Qr.findOne({ qrCodeId });
-      if (!qrCodeData) {
-          return res.status(404).json({ message: "QR code not found" });
+    // Find the QR code data based on qrCodeId
+    const qrCodeData = await Qr.findOne({ qrCodeId });
+    if (!qrCodeData) {
+      return res.status(404).json({ message: "QR code not found" });
+    }
+
+    // Find the associated slot for the QR code
+    const slotData = await Slot.findOne({ qrCodeId });
+
+    let redirectUrl = qrCodeData.url; // Default redirection URL
+    if (slotData) {
+      const currentTime = new Date(); // Get current time
+
+      // Convert the slot start and end times to Date objects
+      const slotStartTime = new Date(slotData.startTime);
+      const slotEndTime = new Date(slotData.endTime);
+
+      // If the current time is within the slot start and end times, use the QR code's URL
+      if (currentTime >= slotStartTime && currentTime <= slotEndTime) {
+        redirectUrl = qrCodeData.url;
+      } else {
+        // If slot has expired, use the default link from the slot
+        redirectUrl = slotData.defaultLink;
       }
-      const slotData = await Slot.findOne({ qrCodeId });
+    }
 
-      let redirectUrl = qrCodeData.url;
-      if (slotData) {
-          const currentTime = new Date();  
+    // Save analytics data with redirection link (pass the ObjectId of the Qr document)
+    const analyticsData = new Analytics({
+      qrCodeId,
+      scan_time: new Date(),
+      device_type: userAgent.includes("Mobile") ? "Mobile" : "Desktop",
+      ip_address: ip,
+      location: geo ? { country: geo.country, city: geo.city } : { country: "Unknown", city: "Unknown" },
+      // Save the ObjectId of the Qr document as redirection_link
+      redirection_link: qrCodeData._id // Assign the ObjectId here (NOT the URL)
+    });
 
-          const slotStartTime = new Date(slotData.startTime);
-          const slotEndTime = new Date(slotData.endTime);
+    await analyticsData.save(); // Save analytics data
+    console.log("Analytics saved:", analyticsData); // Log for debugging
 
-          if (currentTime >= slotStartTime && currentTime <= slotEndTime) {
-              redirectUrl = qrCodeData.url;  
-          } else {
-             
-              redirectUrl = slotData.defaultLink;
-          }
-      }
-
-      const analyticsData = new Analytics({
-          qrCodeId,
-          scan_time: new Date(),
-          device_type: userAgent.includes("Mobile") ? "Mobile" : "Desktop",
-          ip_address: ip,
-          location: geo ? { country: geo.country, city: geo.city } : { country: "Unknown", city: "Unknown" },
-          redirection_link: redirectUrl, 
-      });
-
-      await analyticsData.save(); 
-      console.log("Analytics saved:", analyticsData);  
-
-     
-      res.redirect(redirectUrl);
+    // Redirect the user to the final redirection link (URL)
+    res.redirect(redirectUrl);
   } catch (err) {
-      console.error("Error processing redirection:", err);
-      if (!res.headersSent) {
-          res.status(500).json({ message: "Error processing redirection" });
-      }
+    console.error("Error processing redirection:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Error processing redirection" });
+    }
   }
 };
 
