@@ -99,7 +99,6 @@
 //   const { qrCodeId } = req.params;
 //   const { newUrl } = req.body;
 
- 
 //   if (!newUrl) {
 //     return res.status(400).json({ message: 'New URL is required' });
 //   }
@@ -147,7 +146,6 @@
 //   }
 // }
 
-import geoip from 'geoip-lite';
 import QRCode from 'qrcode';
 import Qr from '../models/qrModel.js';
 import Analytics from '../models/scanAnalytics.js';
@@ -169,7 +167,6 @@ export const generateQrCode = async (req, res) => {
     const newQrCode = new Qr({ qrCodeId, url });
     await newQrCode.save();
 
-    // Generate the QR code as an image URL
     QRCode.toDataURL(`https://qrbackend-aio3.onrender.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
       if (err) {
         return res.status(500).json({ message: 'Error generating QR code' });
@@ -186,64 +183,69 @@ export const generateQrCode = async (req, res) => {
     res.status(500).json({ message: 'Error generating QR code' });
   }
 };
-
-
 export const redirectQrCode = async (req, res) => {
-  const { qrCodeId } = req.params;  
-  const userAgent = req.get("User-Agent"); 
-  const ip = req.ip; 
+  const { qrCodeId } = req.params;
+  const userAgent = req.get("User-Agent");
+  const ip = req.ip;
 
-  const geo = geoip.lookup(ip);  // Lookup geolocation based on IP
+  const ipinfoUrl = `http://ipinfo.io/${ip}?token=eb327d51a73b1b`;
 
   try {
-    // Find the QR code data based on qrCodeId
+    // Fetch geo-location data
+    let location = { country: "Unknown", city: "Unknown" };
+    try {
+      const geoResponse = await fetch(ipinfoUrl);
+      const geo = await geoResponse.json();
+      if (geo && geo.country && geo.city) {
+        location = { country: geo.country, city: geo.city };
+      }
+    } catch (error) {
+      console.error("Geo-location fetch failed:", error);
+    }
+
+    // Find the QR code document
     const qrCodeData = await Qr.findOne({ qrCodeId });
     if (!qrCodeData) {
       return res.status(404).json({ message: "QR code not found" });
     }
 
-    // Find the associated slot for the QR code
+    // Find slot data associated with the QR code
     const slotData = await Slot.findOne({ qrCodeId });
-
-    let redirectUrl = qrCodeData.url; // Default redirection URL (before slot expiration)
+    
+    // Determine the URL to redirect to
+    let redirectUrl = qrCodeData.url; // Default to QR code's URL
 
     if (slotData) {
-      const currentTime = new Date();  // Get current time
-
-      // Convert the slot start and end times to Date objects
+      const currentTime = new Date();
       const slotStartTime = new Date(slotData.startTime);
       const slotEndTime = new Date(slotData.endTime);
 
-      // If the current time is within the slot's start and end times
+      // Check if current time is within the slot's start and end time
       if (currentTime >= slotStartTime && currentTime <= slotEndTime) {
-        // During the slot active period, use the updated URL if it exists
-        redirectUrl = qrCodeData.url; // This is the updated URL after calling the "updateQrCodeUrl" endpoint
+        redirectUrl = qrCodeData.url; // Use QR code URL if within the slot time
       } else {
-        // After the slot expired, redirect to the default link
-        redirectUrl = slotData.defaultLink;
+        redirectUrl = slotData.defaultLink; // Use the default link if outside the slot time
       }
     }
 
-    // Save analytics data with the ObjectId of the Qr document (not the URL string)
+    // Save analytics data
     const analyticsData = new Analytics({
       qrCodeId,
       scan_time: new Date(),
       device_type: userAgent.includes("Mobile") ? "Mobile" : "Desktop",
       ip_address: ip,
-      location: geo ? { country: geo.country, city: geo.city } : { country: "Unknown", city: "Unknown" },
-      redirection_link: qrCodeData._id,  // Store the ObjectId of the Qr document here
+      location: location,
+      redirection_link: qrCodeData._id,
     });
 
-    await analyticsData.save();  // Save analytics data
-    console.log("Analytics saved:", analyticsData);  // Log for debugging
+    await analyticsData.save();
 
-    // Now redirect the user to the final URL (updated URL or default link)
+    // Redirect the user to the appropriate URL
     res.redirect(redirectUrl);
+
   } catch (err) {
     console.error("Error processing redirection:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ message: "Error processing redirection" });
-    }
+    res.status(500).json({ message: "Error processing redirection" });
   }
 };
 
@@ -252,27 +254,28 @@ export const updateQrCodeUrl = async (req, res) => {
   const { qrCodeId } = req.params;
   const { newUrl } = req.body;
 
-  // Ensure the new URL is provided
   if (!newUrl) {
     return res.status(400).json({ message: 'New URL is required' });
   }
 
   try {
-    // Find the QR code based on the qrCodeId
+    
     const qrCode = await Qr.findOne({ qrCodeId });
 
     if (!qrCode) {
       return res.status(404).json({ message: 'QR code not found' });
     }
 
-    // Update the URL of the QR code
     qrCode.url = newUrl;
+
     await qrCode.save();
 
-    // Send a success message upon updating the URL
     res.json({ message: 'QR code URL updated successfully!' });
+
   } catch (err) {
+
     console.error('Error updating QR code URL:', err);
+
     res.status(500).json({ message: 'Error updating QR code URL' });
   }
 };
