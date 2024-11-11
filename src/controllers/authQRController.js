@@ -211,20 +211,22 @@ export const redirectQrCode = async (req, res) => {
 
     // Find slot data associated with the QR code
     const slotData = await Slot.findOne({ qrCodeId });
-    
-    // Determine the URL to redirect to
-    let redirectUrl = qrCodeData.url; // Default to QR code's URL
+
+    // Default redirection URL is the QR code URL
+    let redirectUrl = qrCodeData.url;
 
     if (slotData) {
-      const currentTime = new Date();
-      const slotStartTime = new Date(slotData.startTime);
-      const slotEndTime = new Date(slotData.endTime);
+      const currentTime = new Date(); // Current time in UTC
+      const slotStartTime = new Date(slotData.startTime); // Slot start time in UTC
+      const slotEndTime = new Date(slotData.endTime); // Slot end time in UTC
 
-      // Check if current time is within the slot's start and end time
+      // Check if current time is within the time range of the slot
       if (currentTime >= slotStartTime && currentTime <= slotEndTime) {
-        redirectUrl = qrCodeData.url; // Use QR code URL if within the slot time
+        // Redirect to the slot's redirection URL during the valid time range
+        redirectUrl = slotData.redirectionUrl;
       } else {
-        redirectUrl = slotData.defaultLink; // Use the default link if outside the slot time
+        // Redirect to the default URL outside the valid time range
+        redirectUrl = slotData.defaultUrl;
       }
     }
 
@@ -240,7 +242,7 @@ export const redirectQrCode = async (req, res) => {
 
     await analyticsData.save();
 
-    // Redirect the user to the appropriate URL
+    // Perform the redirection
     res.redirect(redirectUrl);
 
   } catch (err) {
@@ -252,30 +254,40 @@ export const redirectQrCode = async (req, res) => {
 
 export const updateQrCodeUrl = async (req, res) => {
   const { qrCodeId } = req.params;
-  const { newUrl } = req.body;
+  const { newUrl, redirectionUrl, defaultUrl } = req.body;
 
-  if (!newUrl) {
-    return res.status(400).json({ message: 'New URL is required' });
+  if (!newUrl || !redirectionUrl || !defaultUrl) {
+    return res.status(400).json({ message: 'New URL, Redirection URL, and Default URL are required' });
   }
 
   try {
-    
+    // Find the QR code
     const qrCode = await Qr.findOne({ qrCodeId });
 
     if (!qrCode) {
       return res.status(404).json({ message: 'QR code not found' });
     }
 
+    // Update the QR code URL
     qrCode.url = newUrl;
-
     await qrCode.save();
 
-    res.json({ message: 'QR code URL updated successfully!' });
+    // Find the associated slot
+    const slotData = await Slot.findOne({ qrCodeId });
 
+    if (slotData) {
+      // Update slot URLs
+      slotData.redirectionUrl = redirectionUrl;
+      slotData.defaultUrl = defaultUrl;
+      await slotData.save();
+
+      res.json({ message: 'QR code and slot URLs updated successfully!' });
+    } else {
+      res.status(404).json({ message: 'Slot not found for the QR code' });
+    }
   } catch (err) {
-
-    console.error('Error updating QR code URL:', err);
-
-    res.status(500).json({ message: 'Error updating QR code URL' });
+    console.error('Error updating QR code or slot URLs:', err);
+    res.status(500).json({ message: 'Error updating QR code or slot URLs' });
   }
 };
+
