@@ -159,14 +159,17 @@ export const generateQrCode = async (req, res) => {
   }
 
   try {
+    // Check if QR Code with the given qrCodeId already exists
     const existingQrCode = await Qr.findOne({ qrCodeId });
     if (existingQrCode) {
       return res.status(400).json({ message: 'QR Code ID already exists' });
     }
 
+    // Create a new QR Code
     const newQrCode = new Qr({ qrCodeId, url });
     await newQrCode.save();
 
+    // Generate QR Code image
     QRCode.toDataURL(`https://qrbackend-aio3.onrender.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
       if (err) {
         return res.status(500).json({ message: 'Error generating QR code' });
@@ -183,6 +186,7 @@ export const generateQrCode = async (req, res) => {
     res.status(500).json({ message: 'Error generating QR code' });
   }
 };
+
 export const redirectQrCode = async (req, res) => {
   const { qrCodeId } = req.params;
   const userAgent = req.get("User-Agent");
@@ -209,11 +213,11 @@ export const redirectQrCode = async (req, res) => {
       return res.status(404).json({ message: "QR code not found" });
     }
 
-    // Find slot data associated with the QR code
+    // Find the slot data associated with the QR code
     const slotData = await Slot.findOne({ qrCodeId });
 
     // Default redirection URL is the QR code URL
-    let redirectUrl = qrCodeData.url;
+    let redirectUrl = qrCodeData.url; // Assuming QR code has a default URL field
 
     if (slotData) {
       const currentTime = new Date(); // Current time in UTC
@@ -250,6 +254,7 @@ export const redirectQrCode = async (req, res) => {
     res.status(500).json({ message: "Error processing redirection" });
   }
 };
+
 
 
 export const updateQrCodeUrl = async (req, res) => {

@@ -1,52 +1,45 @@
 import Qr from "../models/qrModel.js";
 import Slot from "../models/slotmodel.js";
-
 export const createSlot = async (req, res) => {
-    const { qrCodeId, startTime, endTime, defaultLink, durationInMinutes } = req.body;
-  
-    // Validate the required fields
-    if (!qrCodeId || !startTime || !endTime || !defaultLink || !durationInMinutes) {
-      return res.status(400).json({ message: 'qrCodeId, startTime, endTime, defaultLink, and durationInMinutes are required' });
+  const { qrCodeId, startTime, endTime, redirectionUrl } = req.body;
+
+  if (!qrCodeId || !startTime || !endTime || !redirectionUrl) {
+    return res.status(400).json({
+      message: 'qrCodeId, startTime, endTime, and redirectionUrl are required.',
+    });
+  }
+
+  try {
+    // Find the QR code to ensure it exists
+    const qrCode = await Qr.findOne({ qrCodeId });
+    if (!qrCode) {
+      return res.status(404).json({ message: 'QR Code not found' });
     }
-  
-    try {
-      // Validate that the QR Code exists
-      const existingQrCode = await Qr.findOne({ qrCodeId });
-      if (!existingQrCode) {
-        return res.status(404).json({ message: 'QR Code not found' });
-      }
-  
-      // Convert startTime and endTime to Date objects
-      const startDate = new Date(startTime);
-      const endDate = new Date(endTime);
-  
-      // Validate that the end time is after the start time
-      if (endDate <= startDate) {
-        return res.status(400).json({ message: 'End time must be after start time.' });
-      }
-  
-      // Create a new slot object
-      const newSlot = new Slot({
-        qrCodeId,
-        startTime: startDate,  // Store as Date object
-        endTime: endDate,  // Store as Date object
-        defaultLink,
-        durationInMinutes,
-      });
-  
-      // Save the new slot to the database
-      await newSlot.save();
-  
-      // Respond with success message and slot details
-      res.status(201).json({
-        message: 'Slot created successfully!',
-        slot: newSlot,
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error creating slot', error: err.message });
+
+    // Validate start and end time
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (end <= start) {
+      return res.status(400).json({ message: 'End time must be after start time' });
     }
-  };
+
+    // Create new slot
+    const newSlot = new Slot({
+      qrCodeId,
+      startTime: start,
+      endTime: end,
+      redirectionUrl,
+    });
+
+    await newSlot.save();
+    res.status(201).json({ message: 'Slot created successfully', newSlot });
+  } catch (err) {
+    console.error('Error creating slot:', err);
+    res.status(500).json({ message: 'Error creating slot' });
+  }
+};
+
 export const updateSlot = async(req, res)=>{
     try {
         const {slotId} = req.params
