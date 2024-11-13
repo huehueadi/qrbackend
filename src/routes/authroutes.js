@@ -1,4 +1,5 @@
 import express from 'express';
+      
 import { generateQrCode, redirectQrCode, updateQrCodeUrl } from '../controllers/authQRController.js';
 import { createSlot } from '../controllers/authSlotcontroller.js';
 
@@ -12,7 +13,7 @@ router.put('/update/:qrCodeId', updateQrCodeUrl);
 
 router.post('/create-slot', createSlot);
 
-
 // router.get('/redirect/:qrCodeId', trackScan);
 
 export default router
+

@@ -146,33 +146,179 @@
 //   }
 // }
 
+// import fetch from 'node-fetch';
+// import QRCode from 'qrcode';
+// import Qr from '../models/qrModel.js';
+// import Analytics from '../models/scanAnalytics.js';
+// import Slot from '../models/slotmodel.js';
+
+
+// export const generateQrCode = async (req, res) => {
+//   const { qrCodeId, url } = req.body;
+
+//   if (!qrCodeId || !url) {
+//     return res.status(400).json({ message: 'qrCodeId and url are required' });
+//   }
+
+//   try {
+//     const existingQrCode = await Qr.findOne({ qrCodeId });
+//     if (existingQrCode) {
+//       return res.status(400).json({ message: 'QR Code ID already exists' });
+//     }
+
+//     const newQrCode = new Qr({ qrCodeId, url });
+//     await newQrCode.save();
+
+//     QRCode.toDataURL(`https://qrbackend-aio3.onrender.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
+//       if (err) {
+//         return res.status(500).json({ message: 'Error generating QR code' });
+//       }
+
+//       res.json({
+//         message: 'QR code generated successfully!',
+//         qrCodeUrl, // URL for the generated QR code image
+//         qrCodeId,  // The ID of the generated QR code
+//       });
+//     });
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: 'Error generating QR code' });
+//   }
+// };
+
+// export const redirectQrCode = async (req, res) => {
+//   const { qrCodeId } = req.params;
+//   const userAgent = req.get("User-Agent");
+//   const ip = req.ip;
+
+//   const ipinfoUrl = `http://ipinfo.io/${ip}?token=eb327d51a73b1b`;
+
+//   try {
+//     // Fetch geo-location data
+//     let location = { country: "Unknown", city: "Unknown" };
+//     try {
+//       const geoResponse = await fetch(ipinfoUrl);
+//       const geo = await geoResponse.json();
+//       if (geo && geo.country && geo.city) {
+//         location = { country: geo.country, city: geo.city };
+//       }
+//     } catch (error) {
+//       console.error("Geo-location fetch failed:", error);
+//     }
+
+//     // Find the QR code document
+//     const qrCodeData = await Qr.findOne({ qrCodeId });
+//     if (!qrCodeData) {
+//       return res.status(404).json({ message: "QR code not found" });
+//     }
+
+//     // Find slot data associated with the QR code
+//     const slotData = await Slot.findOne({ qrCodeId });
+
+//     if (!slotData) {
+//       return res.status(404).json({ message: 'Slot not found' });
+//     }
+
+//     // Determine the redirect URL (default or redirection based on time)
+//     let redirectUrl = slotData.defaultUrl;  // Default URL for first 2 minutes
+
+//     const currentTime = new Date();
+//     const slotCreationTime = new Date(slotData.createdAt);
+//     const twoMinutesInMillis = 2 * 60 * 1000; // 2 minutes in milliseconds
+//     const timeElapsed = currentTime - slotCreationTime;
+
+//     if (timeElapsed > twoMinutesInMillis) {
+//       // After 2 minutes, use the redirection URL
+//       redirectUrl = slotData.redirectionUrl;
+//     }
+
+//     // Save analytics data (for tracking purpose)
+//     const analyticsData = new Analytics({
+//       qrCodeId,
+//       scan_time: new Date(),
+//       device_type: userAgent.includes("Mobile") ? "Mobile" : "Desktop",
+//       ip_address: ip,
+//       location: location,
+//       redirection_link: qrCodeData._id,
+//     });
+
+//     await analyticsData.save();
+
+//     // Redirect user
+//     res.redirect(redirectUrl);
+//   } catch (err) {
+//     console.error("Error processing redirection:", err);
+//     res.status(500).json({ message: "Error processing redirection" });
+//   }
+// };
+// export const updateQrCodeUrl = async (req, res) => {
+//   const { qrCodeId } = req.params;
+//   const { newUrl, redirectionUrl, defaultUrl } = req.body;
+
+//   if (!newUrl || !redirectionUrl || !defaultUrl) {
+//     return res.status(400).json({ message: 'New URL, Redirection URL, and Default URL are required' });
+//   }
+
+//   try {
+//     // Find the QR code
+//     const qrCode = await Qr.findOne({ qrCodeId });
+
+//     if (!qrCode) {
+//       return res.status(404).json({ message: 'QR code not found' });
+//     }
+
+//     // Update the QR code URL
+//     qrCode.url = newUrl;
+//     await qrCode.save();
+
+//     // Find the associated slot
+//     const slotData = await Slot.findOne({ qrCodeId });
+
+//     if (slotData) {
+//       // Update slot URLs
+//       slotData.redirectionUrl = redirectionUrl;
+//       slotData.defaultUrl = defaultUrl;
+//       await slotData.save();
+
+//       res.json({ message: 'QR code and slot URLs updated successfully!' });
+//     } else {
+//       res.status(404).json({ message: 'Slot not found for the QR code' });
+//     }
+//   } catch (err) {
+//     console.error('Error updating QR code or slot URLs:', err);
+//     res.status(500).json({ message: 'Error updating QR code or slot URLs' });
+//   }
+// };
+
+
+import moment from 'moment-timezone';
 import QRCode from 'qrcode';
 import Qr from '../models/qrModel.js';
-import Analytics from '../models/scanAnalytics.js';
 import Slot from '../models/slotmodel.js';
+
 
 export const generateQrCode = async (req, res) => {
   const { qrCodeId, url } = req.body;
 
   if (!qrCodeId || !url) {
-    return res.status(400).json({ message: 'qrCodeId and url are required' });
+    return res.status(400).json({ message: 'QR Code ID and URL are required.' });
   }
 
   try {
-    // Check if QR Code with the given qrCodeId already exists
     const existingQrCode = await Qr.findOne({ qrCodeId });
     if (existingQrCode) {
-      return res.status(400).json({ message: 'QR Code ID already exists' });
+      return res.status(400).json({ message: 'QR Code ID already exists.' });
     }
 
-    // Create a new QR Code
+    // Save the new QR code with the default URL
     const newQrCode = new Qr({ qrCodeId, url });
     await newQrCode.save();
 
-    // Generate QR Code image
+    // Generate the QR code image URL
     QRCode.toDataURL(`https://qrbackend-aio3.onrender.com/api/redirect/${qrCodeId}`, (err, qrCodeUrl) => {
       if (err) {
-        return res.status(500).json({ message: 'Error generating QR code' });
+        return res.status(500).json({ message: 'Error generating QR code.' });
       }
       res.json({
         message: 'QR code generated successfully!',
@@ -183,116 +329,89 @@ export const generateQrCode = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error generating QR code' });
+    res.status(500).json({ message: 'Error generating QR code.' });
   }
 };
+
 
 export const redirectQrCode = async (req, res) => {
   const { qrCodeId } = req.params;
-  const userAgent = req.get("User-Agent");
-  const ip = req.ip;
-
-  const ipinfoUrl = `http://ipinfo.io/${ip}?token=eb327d51a73b1b`;
-
   try {
-    // Fetch geo-location data
-    let location = { country: "Unknown", city: "Unknown" };
-    try {
-      const geoResponse = await fetch(ipinfoUrl);
-      const geo = await geoResponse.json();
-      if (geo && geo.country && geo.city) {
-        location = { country: geo.country, city: geo.city };
-      }
-    } catch (error) {
-      console.error("Geo-location fetch failed:", error);
-    }
-
-    // Find the QR code document
     const qrCodeData = await Qr.findOne({ qrCodeId });
     if (!qrCodeData) {
-      return res.status(404).json({ message: "QR code not found" });
+      return res.status(404).json({ message: 'QR code not found.' });
     }
+    const currentTime = moment.utc(); 
 
-    // Find the slot data associated with the QR code
     const slotData = await Slot.findOne({ qrCodeId });
 
-    // Default redirection URL is the QR code URL
-    let redirectUrl = qrCodeData.url; // Assuming QR code has a default URL field
+    let redirectUrl = qrCodeData.url; 
+
+    console.log("Current Time (UTC):", currentTime.format('YYYY-MM-DD HH:mm:ss'));
 
     if (slotData) {
-      const currentTime = new Date(); // Current time in UTC
-      const slotStartTime = new Date(slotData.startTime); // Slot start time in UTC
-      const slotEndTime = new Date(slotData.endTime); // Slot end time in UTC
+      const { startTime, endTime, redirectionUrl } = slotData;
+     
+      const slotStartTime = moment.utc(startTime); 
+      const slotEndTime = moment.utc(endTime);  
+      
+      console.log("Slot Start Time (UTC):", slotStartTime.format('YYYY-MM-DD HH:mm:ss'));
+      console.log("Slot End Time (UTC):", slotEndTime.format('YYYY-MM-DD HH:mm:ss'));
 
-      // Check if current time is within the time range of the slot
-      if (currentTime >= slotStartTime && currentTime <= slotEndTime) {
-        // Redirect to the slot's redirection URL during the valid time range
-        redirectUrl = slotData.redirectionUrl;
+      if (currentTime.isBetween(slotStartTime, slotEndTime, null, '[]')) {
+       
+        redirectUrl = redirectionUrl;
       } else {
-        // Redirect to the default URL outside the valid time range
-        redirectUrl = slotData.defaultUrl;
+        console.log("Current time is out of slot time window.");
       }
     }
+    console.log("Final redirectUrl:", redirectUrl);
 
-    // Save analytics data
-    const analyticsData = new Analytics({
-      qrCodeId,
-      scan_time: new Date(),
-      device_type: userAgent.includes("Mobile") ? "Mobile" : "Desktop",
-      ip_address: ip,
-      location: location,
-      redirection_link: qrCodeData._id,
-    });
-
-    await analyticsData.save();
-
-    // Perform the redirection
+    if (!redirectUrl) {
+      throw new Error("Redirection URL is undefined or invalid.");
+    }
     res.redirect(redirectUrl);
 
   } catch (err) {
-    console.error("Error processing redirection:", err);
-    res.status(500).json({ message: "Error processing redirection" });
+    console.error('Error during redirection:', err);
+    res.status(500).json({ message: 'Error processing redirection.' });
   }
 };
-
-
 
 export const updateQrCodeUrl = async (req, res) => {
-  const { qrCodeId } = req.params;
-  const { newUrl, redirectionUrl, defaultUrl } = req.body;
-
-  if (!newUrl || !redirectionUrl || !defaultUrl) {
-    return res.status(400).json({ message: 'New URL, Redirection URL, and Default URL are required' });
-  }
-
-  try {
-    // Find the QR code
-    const qrCode = await Qr.findOne({ qrCodeId });
-
-    if (!qrCode) {
-      return res.status(404).json({ message: 'QR code not found' });
+    const { qrCodeId } = req.params;
+    const { newUrl, redirectionUrl, defaultUrl } = req.body;
+  
+    if (!newUrl || !redirectionUrl || !defaultUrl) {
+      return res.status(400).json({ message: 'New URL, Redirection URL, and Default URL are required' });
     }
-
-    // Update the QR code URL
-    qrCode.url = newUrl;
-    await qrCode.save();
-
-    // Find the associated slot
-    const slotData = await Slot.findOne({ qrCodeId });
-
-    if (slotData) {
-      // Update slot URLs
-      slotData.redirectionUrl = redirectionUrl;
-      slotData.defaultUrl = defaultUrl;
-      await slotData.save();
-
-      res.json({ message: 'QR code and slot URLs updated successfully!' });
-    } else {
-      res.status(404).json({ message: 'Slot not found for the QR code' });
+  
+    try {
+      // Find the QR code
+      const qrCode = await Qr.findOne({ qrCodeId });
+  
+      if (!qrCode) {
+        return res.status(404).json({ message: 'QR code not found' });
+      }
+      
+      qrCode.url = newUrl;
+      await qrCode.save();
+      
+      const slotData = await Slot.findOne({ qrCodeId });
+  
+      if (slotData) {
+       
+        slotData.redirectionUrl = redirectionUrl;
+        slotData.defaultUrl = defaultUrl;
+        await slotData.save();
+  
+        res.json({ message: 'QR code and slot URLs updated successfully!' });
+      } else {
+        res.status(404).json({ message: 'Slot not found for the QR code' });
+      }
+    } catch (err) {
+      console.error('Error updating QR code or slot URLs:', err);
+      res.status(500).json({ message: 'Error updating QR code or slot URLs' });
     }
-  } catch (err) {
-    console.error('Error updating QR code or slot URLs:', err);
-    res.status(500).json({ message: 'Error updating QR code or slot URLs' });
-  }
-};
-
+  };
+  
